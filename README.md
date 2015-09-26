@@ -4,7 +4,7 @@ Copyright (c) 2014-2015 Mokky and Haybla. All rights reserved.
 
 This is the source codes of a CUDA application named LDPC-CC_Pipeline_Decoder. 
 Techniques of design and optimazation can be found in the article published in
-the IEEE Communications Letters journal (The article is accepted just now).
+the IEEE Communications Letters journal (The article was accepted just now).
 
 In order to compile this project, Linux OS is recommended. Just open a terminal 
 and go into the "src" directory. 
@@ -29,9 +29,9 @@ the terminal. You can clean all compilation using "make clean".
 Macro definitions are written in the file named "totalDefine.h". You can enable/disable 
 some of them to change the mode of the decoder. Descriptions are as follows.
 
-CODE1: represents the LDPC-CC formed by (4096, 10240) LDPC codes in CCSDS standard. 
+CODE1: represents the LDPC-CC constructed by (4096, 10240) LDPC codes in CCSDS standard. 
 
-CODE2: represents the LDPC-CC formed by (4096, 7168) LDPC codes in CCSDS standard.
+CODE2: represents the LDPC-CC constructed by (4096, 7168) LDPC codes in CCSDS standard.
 
 LINUX: once defined, the project must be compiled and run on Linux OS.
 
