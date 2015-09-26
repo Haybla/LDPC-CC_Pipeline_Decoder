@@ -29,7 +29,8 @@ the terminal. You can clean all compilation using "make clean".
 Macro definitions are written in the file totalDefine.h. You can enable/disable 
 some of them to change the mode of the decoder. Descriptions are as follows.
 
-CODE1: represents the LDPC-CC formed by (4096, 10240) LDPC codes in CCSDS standard.
+CODE1: represents the LDPC-CC formed by (4096, 10240) LDPC codes in CCSDS standard. 
+
 CODE2: represents the LDPC-CC formed by (4096, 7168) LDPC codes in CCSDS standard.
 
 LINUX: once defined, the project must be compiled and run on Linux OS.
