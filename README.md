@@ -20,7 +20,7 @@ execute the "decode" as follows.
 
 >./decode
 
-And you will see some information about decoding times and throughputs printed on 
+And you will see some information about decoding times and throughputs printed in 
 the terminal. You can clean all compilation using "make clean".
 
 >make clean
