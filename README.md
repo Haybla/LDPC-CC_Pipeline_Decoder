@@ -26,7 +26,7 @@ the terminal. You can clean all compilation using "make clean".
 >make clean
 
 #Besides
-Macro definitions are written in the file totalDefine.h. You can enable/disable 
+Macro definitions are written in the file named "totalDefine.h". You can enable/disable 
 some of them to change the mode of the decoder. Descriptions are as follows.
 
 CODE1: represents the LDPC-CC formed by (4096, 10240) LDPC codes in CCSDS standard. 
