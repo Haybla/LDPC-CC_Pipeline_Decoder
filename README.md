@@ -13,8 +13,8 @@ Then compile all the codes using "make".
 
 >make
 
-A file named "decode" will be generated if everything goes right. Just execute 
-the "decode" as follows.
+An executed file named "decode" will be generated if everything goes right. Just 
+execute the "decode" as follows.
 
 >./decode
 
@@ -24,7 +24,8 @@ the terminal. You can clean all compilation using "make clean".
 >make clean
 
 #Besides
-
+Macro definitions are written in the file totalDefine.h. You can enable/disable 
+some of them to 
 
 
 
