@@ -1,3 +1,18 @@
+/*
+Copyright (c) 2014-2015 Mokky and Haybla. All rights reserved.
+
+This file is part of LDPC-CC_Pipeline_Decoder. Original Codes can
+be found at <https://github.com/Haybla>.
+
+LDPC-CC_Pipeline_Decoder is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation, either version 3 of
+the License, or any later version.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "CPU_decode.h"
 
 extern matrix_check_node h_matrix_node_c[BLOCK_NUM_ROW];
@@ -36,13 +51,13 @@ float dev_ltanh(float info)
 	else
 	{
 		x_e = (float)exp(-x_abs);
-		y = (float)log((1 + x_e) / (1 - x_e));			// 原文为 y = log(1+x_e/(1-x_e)); 少括号！！
+		y = (float)log((1 + x_e) / (1 - x_e));
 
 		if (y > MAXLOG)
 		{
 			y = MAXLOG;
 		}
-		else if (y < -MAXLOG)				//
+		else if (y < -MAXLOG)
 		{
 			y = MAXLOG;
 		}
@@ -385,8 +400,8 @@ void fun_matrix()
 extern "C"
 void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_COL *h_info_col_2_row, INFO_ROW *h_info_row_2_col)
 {
-	int row_offset = time_count * 768; //offset of the first row
-	int col_offset = (time_count - 3) * 1792; //offset of the first col
+	int row_offset = time_count * 768;
+	int col_offset = (time_count - 3) * 1792;
 	int row_id = 0;
 	int col_id = 0;
 	node_position node[10];
@@ -397,16 +412,17 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 	int number = 0;
 	int offset = 0;
 
-	float info[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //info = channel col to row info
-	int info_symbol[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //positive = 0, negative = 1
+	float info[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	int info_symbol[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	float info_sum = 0;
 	int info_sum_symbol = 0;
 	float info_channel = 0;
 
 	//Check Update
-	for (int I = 0; I<ITERATE_TIME; I++) //20 processor
+
+	for (int I = 0; I<ITERATE_TIME; I++)
 	{
-		for (int r = 0; r<CHECK_SIZE; r++) //r Row
+		for (int r = 0; r<CHECK_SIZE; r++)
 		{
 			row_id = row_offset - I * 4 * 768 + r;
 			i = 0;
@@ -425,10 +441,8 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 					node[i].cpos = h_matrix_node_c[block_id].order[i].col_2_row;
 					number = h_matrix_node_c[block_id].order[i].number;
 					node[i].pos = offset + node[i].pos * 256 + (number + relative_id) % 256;
-					node[i].pos = node[i].pos%COL_LENGTH; //cycle to store
-					//	printf("pos %d  cpos %d \n",node[i].pos,node[i].cpos);
+					node[i].pos = node[i].pos%COL_LENGTH;
 
-					//info[i] = channel_col_2_row_info[node[i].pos][node[i].cpos];
 
 					if (node[i].pos >= 0)
 					{
@@ -465,13 +479,11 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 				{
 					if (info[i] != 0)
 					{
-						info[i] = info_sum - info[i];// minus itself
+						info[i] = info_sum - info[i];
 						info[i] = dev_ltanh(info[i]);
 						unsigned int* pa = (unsigned int *)(&info[i]);
 						*pa ^= ((info_sum_symbol^info_symbol[i]) << 31);
 
-						//store the info into row_2_col
-						//channel_row_2_col_info[id%ROW_LENGTH][i] = info[i];
 						h_info_row_2_col->info[i][row_id%ROW_LENGTH] = info[i];
 					}
 					i++;
@@ -485,7 +497,6 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 
 
 	//Variable Update
-
 
 	for (int I = 0; I<ITERATE_TIME; I++)
 	{
@@ -513,10 +524,8 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 					node[i].cpos = h_matrix_node_v[block_id].order[i].row_2_col;
 					number = h_matrix_node_v[block_id].order[i].number;
 					node[i].pos = offset + node[i].pos * 256 + (relative_id - number + 256) % 256;
-					node[i].pos = node[i].pos%ROW_LENGTH; //cycle to store
-					//		printf("pos %d  cpos %d \n",node[i].pos,node[i].cpos);
+					node[i].pos = node[i].pos%ROW_LENGTH;
 
-					//info[i] = channel_row_2_col_info[node[i].pos][node[i].cpos];
 					info[i] = h_info_row_2_col->info[node[i].cpos][node[i].pos];
 
 					i++;
@@ -541,7 +550,8 @@ void update(int time_count, float *h_channel_info, int **h_decoded_word, INFO_CO
 				}
 
 
-				//make decision, I = 19
+				//Make decision
+
 				if (I == (ITERATE_TIME - 1))
 				{
 					int decision = 0;

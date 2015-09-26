@@ -1,7 +1,22 @@
+/*
+Copyright (c) 2014-2015 Mokky and Haybla. All rights reserved.
+
+This file is part of LDPC-CC_Pipeline_Decoder. Original Codes can 
+be found at <https://github.com/Haybla>.
+
+LDPC-CC_Pipeline_Decoder is free software: you can redistribute it 
+and/or modify it under the terms of the GNU General Public License 
+as published by the Free Software Foundation, either version 3 of 
+the License, or any later version.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "totalDefine.h"
 #include "CPU_decode.h"
 #include "randn.h"
-#include "cuda_randn.cuh"
+#include "cuda_helper.cuh"
 
 #ifdef CODE1
 #include "GPU_decode_10240.cuh"
@@ -10,8 +25,14 @@
 #include "GPU_decode_7168.cuh"
 #endif
 
-#ifdef MAP_MODE
+#ifdef LINUX
 #include "linux.h"
+#endif
+
+#ifdef CODE1
+#define PRINTPARM printf("CCSDS(%d,%d): ",4096, 10240);
+#else
+#define PRINTPARM printf("CCSDS(%d,%d): ",4096, 7168);
 #endif
 
 //Host Matrix
@@ -24,13 +45,13 @@ int main()
 	/*****************************************************************/
 	/********************GPU Device Initialization********************/
 	/*****************************************************************/
-	cudaDeviceReset();
+	checkCudaErrors(cudaDeviceReset());
 
-#ifdef MAP_MODE
-	cudaSetDeviceFlags(cudaDeviceMapHost);
+#ifdef LINUX
+	checkCudaErrors(cudaSetDeviceFlags(cudaDeviceMapHost));
 #endif
 
-	cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+	checkCudaErrors(cudaDeviceSetCacheConfig(cudaFuncCachePreferL1));
 
 
 	/*****************************************************************/
@@ -52,17 +73,17 @@ int main()
 	float DB = 1.2;
 	int STREAM_COUNT = 15;
 
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 	__int64 TIME_COUNT = 1e9/STREAM_NUM/STREAM_COUNT;
 	__int64 RELAY = 1e5;
 	int MAX_FE = 500;
 #else
-	__int64 TIME_COUNT = 1e3;
+	__int64 TIME_COUNT = 1e4;
 #endif
 
-#ifdef TESTDB_MODE
-	float DB_start = 1.6;
-	float DB_end = 1.7;
+#ifdef TEST_PERF
+	float DB_start = 1.1;
+	float DB_end = 1.2;
 	float DB_step = 0.05;
 
 	static FILE *f1 = NULL;
@@ -100,13 +121,12 @@ int main()
 		int *th_decoded_word[STREAM_NUM];
 
 		//Buffers
-#ifdef BUFFER_MODE
 		BUF_INFO_COL *buf_d_info_col_2_row[STREAM_NUM * SUB_NUM];
 		BUF_INFO_COL *buf_h_info_col_2_row[STREAM_NUM * SUB_NUM];
 		buf_info_ch *buf_d_channel_info[STREAM_NUM];
 		buf_info_ch *buf_h_channel_info[STREAM_NUM];
-#endif
-#if defined(BUFFER_MODE) && defined(MAP_MODE)
+
+#ifdef LINUX
 		BUF_INFO_COL *buf_h_col[STREAM_NUM * SUB_NUM];
 		buf_info_ch *buf_h_ch[STREAM_NUM * SUB_NUM];
 		int *th_decoded_w[STREAM_NUM];
@@ -115,29 +135,28 @@ int main()
 		//Malloc Host Memory
 		for (int i = 0; i < (ITERATE_TIME * SUB_NUM); i++)
 		{
-			cudaHostAlloc(&h_decoded_word[i], sizeof(int)*BLOCK_SIZE, cudaHostAllocDefault);
+			checkCudaErrors(cudaHostAlloc(&h_decoded_word[i], sizeof(int)*BLOCK_SIZE, cudaHostAllocDefault));
 		}
-		cudaHostAlloc(&h_channel_info, sizeof(float)*COL_LENGTH, cudaHostAllocDefault);
-		cudaHostAlloc(&h_info_col_2_row, sizeof(INFO_COL), cudaHostAllocDefault);
-		cudaHostAlloc(&h_info_row_2_col, sizeof(INFO_ROW), cudaHostAllocDefault);
+		checkCudaErrors(cudaHostAlloc(&h_channel_info, sizeof(float)*COL_LENGTH, cudaHostAllocDefault));
+		checkCudaErrors(cudaHostAlloc(&h_info_col_2_row, sizeof(INFO_COL), cudaHostAllocDefault));
+		checkCudaErrors(cudaHostAlloc(&h_info_row_2_col, sizeof(INFO_ROW), cudaHostAllocDefault));
 
 		//Malloc Device Memory and Host Temp Memory
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
-			cudaMalloc(&d_channel_info[i], sizeof(info_ch)*STREAM_COUNT);
-			cudaMalloc(&d_decoded_word[i], sizeof(int)*BLOCK_SIZE*STREAM_COUNT);
-			cudaMalloc(&d_info_col_2_row[i], sizeof(INFO_COL)*STREAM_COUNT);
-			cudaMalloc(&d_info_row_2_col[i], sizeof(INFO_ROW)*STREAM_COUNT);
+			checkCudaErrors(cudaMalloc(&d_channel_info[i], sizeof(info_ch)*STREAM_COUNT));
+			checkCudaErrors(cudaMalloc(&d_decoded_word[i], sizeof(int)*BLOCK_SIZE*STREAM_COUNT));
+			checkCudaErrors(cudaMalloc(&d_info_col_2_row[i], sizeof(INFO_COL)*STREAM_COUNT));
+			checkCudaErrors(cudaMalloc(&d_info_row_2_col[i], sizeof(INFO_ROW)*STREAM_COUNT));
 
-			cudaHostAlloc(&th_info_col_2_row[i], sizeof(INFO_COL)*STREAM_COUNT, cudaHostAllocDefault);
-#ifndef MAP_MODE
-			cudaHostAlloc(&th_decoded_word[i], sizeof(int)*BLOCK_SIZE*STREAM_COUNT, cudaHostAllocDefault);
+			checkCudaErrors(cudaHostAlloc(&th_info_col_2_row[i], sizeof(INFO_COL)*STREAM_COUNT, cudaHostAllocDefault));
+#ifndef LINUX
+			checkCudaErrors(cudaHostAlloc(&th_decoded_word[i], sizeof(int)*BLOCK_SIZE*STREAM_COUNT, cudaHostAllocDefault));
 #endif
 		}
 
 		//Malloc Buffers
-#ifdef BUFFER_MODE
-#ifdef MAP_MODE
+#ifdef LINUX
 		for (int i = 0; i < STREAM_NUM; i++)
 		for (int j = 0; j < SUB_NUM; j++)
 		{
@@ -157,25 +176,25 @@ int main()
 		for (int i = 0; i < STREAM_NUM; i++)
 		for (int j = 0; j < SUB_NUM; j++)
 		{
-			cudaHostAlloc(&buf_h_info_col_2_row[i * SUB_NUM + j], sizeof(BUF_INFO_COL)*STREAM_COUNT, cudaHostAllocDefault);
+			checkCudaErrors(cudaHostAlloc(&buf_h_info_col_2_row[i * SUB_NUM + j], sizeof(BUF_INFO_COL)*STREAM_COUNT, cudaHostAllocDefault));
 		}
 
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
-			cudaHostAlloc(&buf_h_channel_info[i], sizeof(buf_info_ch)*STREAM_COUNT * SUB_NUM, cudaHostAllocDefault);
+			checkCudaErrors(cudaHostAlloc(&buf_h_channel_info[i], sizeof(buf_info_ch)*STREAM_COUNT * SUB_NUM, cudaHostAllocDefault));
 		}
 #endif
 		for (int i = 0; i < STREAM_NUM; i++)
 		for (int j = 0; j < SUB_NUM; j++)
 		{
-			cudaMalloc(&buf_d_info_col_2_row[i * SUB_NUM + j], sizeof(BUF_INFO_COL)*STREAM_COUNT);
+			checkCudaErrors(cudaMalloc(&buf_d_info_col_2_row[i * SUB_NUM + j], sizeof(BUF_INFO_COL)*STREAM_COUNT));
 		}
 
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
-			cudaMalloc(&buf_d_channel_info[i], sizeof(buf_info_ch)*STREAM_COUNT * SUB_NUM);
+			checkCudaErrors(cudaMalloc(&buf_d_channel_info[i], sizeof(buf_info_ch)*STREAM_COUNT * SUB_NUM));
 		}
-#endif
+
 
 		/*****************************************************************/
 		/***********************Simulation Starting***********************/
@@ -191,7 +210,7 @@ int main()
 		__int64 time_count = 0;
 		totalTime = 0;
 
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 		printf("-----dB is %1.2f Testing Now-----\n", DB);
 #endif
 
@@ -232,18 +251,17 @@ int main()
 		{
 			for (int j = 0; j < STREAM_COUNT; j++)
 			{
-				cudaMemcpy(&d_channel_info[i][j], h_channel_info, sizeof(info_ch), cudaMemcpyHostToDevice);
-				cudaMemcpy(&d_info_col_2_row[i][j], h_info_col_2_row, sizeof(INFO_COL), cudaMemcpyHostToDevice); 
-				cudaMemcpy(&d_info_row_2_col[i][j], h_info_row_2_col, sizeof(INFO_ROW), cudaMemcpyHostToDevice); 
+				checkCudaErrors(cudaMemcpy(&d_channel_info[i][j], h_channel_info, sizeof(info_ch), cudaMemcpyHostToDevice));
+				checkCudaErrors(cudaMemcpy(&d_info_col_2_row[i][j], h_info_col_2_row, sizeof(INFO_COL), cudaMemcpyHostToDevice));
+				checkCudaErrors(cudaMemcpy(&d_info_row_2_col[i][j], h_info_row_2_col, sizeof(INFO_ROW), cudaMemcpyHostToDevice));
 			}
 		}
 
 		//Matrix Copy Host to Device, Constant Memory
-		cudaMemcpyToSymbol(d_matrix_node_c, h_matrix_node_c, sizeof(matrix_check_node)* BLOCK_NUM_ROW); 
-		cudaMemcpyToSymbol(d_matrix_node_v, h_matrix_node_v, sizeof(matrix_variable_node)* BLOCK_NUM_COL);
+		checkCudaErrors(cudaMemcpyToSymbol(d_matrix_node_c, h_matrix_node_c, sizeof(matrix_check_node)* BLOCK_NUM_ROW));
+		checkCudaErrors(cudaMemcpyToSymbol(d_matrix_node_v, h_matrix_node_v, sizeof(matrix_variable_node)* BLOCK_NUM_COL));
 
 		//Buffers Initialization
-#ifdef BUFFER_MODE
 		for (int str_count = 0; str_count < STREAM_NUM; str_count++)
 		for (int bl = 0; bl < SUB_NUM; bl++)
 		{
@@ -251,9 +269,9 @@ int main()
 			{
 				memcpy(&buf_h_channel_info[str_count][bl * STREAM_COUNT + i][0], &h_channel_info[(((time_count) % (ITERATE_TIME * SUB_NUM)) - SUB_NUM + bl) * BLOCK_SIZE], sizeof(float)*BLOCK_SIZE);
 			}
-			cudaMemcpy(&buf_d_channel_info[str_count][bl * STREAM_COUNT], &buf_h_channel_info[str_count][bl * STREAM_COUNT], sizeof(buf_info_ch)* STREAM_COUNT, cudaMemcpyHostToDevice);
+			checkCudaErrors(cudaMemcpy(&buf_d_channel_info[str_count][bl * STREAM_COUNT], &buf_h_channel_info[str_count][bl * STREAM_COUNT], sizeof(buf_info_ch)* STREAM_COUNT, cudaMemcpyHostToDevice));
 		}
-#endif
+
 
 		/*****************************************************************/
 		/**************************GPU Decoding***************************/
@@ -265,22 +283,22 @@ int main()
 		//Streams Creation
 		cudaStream_t *str = (cudaStream_t *)malloc(STREAM_NUM * sizeof(cudaStream_t));
 		for (int i = 0; i < STREAM_NUM; i++)
-			cudaStreamCreate(&str[i]);
+			checkCudaErrors(cudaStreamCreate(&str[i]));
 
-#ifdef TESTDB_MODE
-		printf("time_count = %13d", time_count);
+#ifdef TEST_PERF
+		printf("time_count = %13ld", time_count);
 		bit_error = 0; block_error = 0; block_num = 0;		//only count BER/FER simulation on GPU
 #endif
 
 		//GPU Decoding Starting
 		
 		//GPU Timer
-		cudaEventCreate(&start);
-		cudaEventCreate(&stop);
+		checkCudaErrors(cudaEventCreate(&start));
+		checkCudaErrors(cudaEventCreate(&stop));
 
-		cudaEventRecord(start, 0);
+		checkCudaErrors(cudaEventRecord(start, 0));
 		while (time_count < TIME_COUNT
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 			&& block_error < MAX_FE
 #endif
 			)
@@ -288,14 +306,13 @@ int main()
 			int bl = (time_count + 1) % SUB_NUM;
 
 			//Generate buffers
-#if defined(BUFFER_MODE) && !defined(TESTDB_MODE)
+#ifndef TEST_PERF
 				for (int str_count = 0; str_count < STREAM_NUM; str_count++)
 				for (int i = 0; i < STREAM_COUNT; i++)
 				{
 					memcpy(&buf_h_channel_info[str_count][bl*STREAM_COUNT + i][0], &h_channel_info[((time_count) % (ITERATE_TIME * SUB_NUM)) * BLOCK_SIZE], sizeof(float)*BLOCK_SIZE);
 				}
-#endif
-#if defined(BUFFER_MODE) && defined(TESTDB_MODE)
+#else
 				for (int str_count = 0; str_count < STREAM_NUM; str_count++)
 				for (int i = 0; i < STREAM_COUNT; i++)
 				{
@@ -309,7 +326,7 @@ int main()
 			//H2D
 			for (int str_count = 0; str_count < STREAM_NUM; str_count++)
 			{
-				cudaMemcpyAsync(&buf_d_channel_info[str_count][bl*STREAM_COUNT], &buf_h_channel_info[str_count][bl*STREAM_COUNT], sizeof(buf_info_ch)*STREAM_COUNT, cudaMemcpyHostToDevice, str[str_count]);
+				checkCudaErrors(cudaMemcpyAsync(&buf_d_channel_info[str_count][bl*STREAM_COUNT], &buf_h_channel_info[str_count][bl*STREAM_COUNT], sizeof(buf_info_ch)*STREAM_COUNT, cudaMemcpyHostToDevice, str[str_count]));
 			}
 
 			//Kernel Execution
@@ -353,15 +370,15 @@ int main()
 			//D2H
 			for (int str_count = 0; str_count < STREAM_NUM; str_count++)
 			{
-				cudaMemcpyAsync(th_decoded_word[str_count], d_decoded_word[str_count], sizeof(int)*BLOCK_SIZE*STREAM_COUNT, cudaMemcpyDeviceToHost, str[str_count]);
+				checkCudaErrors(cudaMemcpyAsync(th_decoded_word[str_count], d_decoded_word[str_count], sizeof(int)*BLOCK_SIZE*STREAM_COUNT, cudaMemcpyDeviceToHost, str[str_count]));
 			}
 
 			//Cuda Streams Synchronizing
-			cudaDeviceSynchronize();
+			checkCudaErrors(cudaDeviceSynchronize());
 
 
 			//Compute number of errors in test mode
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 			if (time_count > 1000)
 			{
 				for (int i = 0; i < STREAM_NUM; i++)
@@ -382,44 +399,54 @@ int main()
 					float BER = (float)(bit_error) / (block_num * BLOCK_SIZE);
 					float FER = (float)block_error / block_num;
 					f1 = fopen("BER&FER.txt", "a+");
-					fprintf(f1, "SNR=%.3f, BER=%.3e, FER=%.3e, BLOCK_NUM=%d, BLOCK_ERR=%d\n", DB, BER, FER, block_num, block_error);
+					fprintf(f1, "SNR=%.3f, BER=%.3e, FER=%.3e, BLOCK_NUM=%ld, BLOCK_ERR=%ld\n", DB, BER, FER, block_num, block_error);
 					fclose(f1);
 					f1 = NULL;
 				}
 			}
 #endif
 
-#if !defined(TESTDB_MODE) && !defined(TESTSTREAM_MODE)
+#ifndef TEST_PERF
 			time_count++;
 #else
 			printf("\b\b\b\b\b\b\b\b\b\b\b\b\b");
-			printf("%13d", time_count);
+			printf("%13ld", time_count);
 			time_count = time_count + 1;
 #endif
 		}
 		//GPU Decoding Ending
 
 		//GPU Timer
-		cudaEventRecord(stop, 0);
-		cudaEventSynchronize(stop);
-		cudaEventElapsedTime(&testTime, start, stop);
+		checkCudaErrors(cudaEventRecord(stop, 0));
+		checkCudaErrors(cudaEventSynchronize(stop));
+		checkCudaErrors(cudaEventElapsedTime(&testTime, start, stop));
 		totalTime += testTime;
 
 		//Compute BER and FER in test mode
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 		float BER = (float)(bit_error) / (block_num * BLOCK_SIZE);
 		float FER = (float)block_error / block_num;
-		printf("\nBER is %.3e \nFER is %.3e \n", BER, FER);
+		printf("\n");
+		PRINTPARM
+		printf("BER is %.3e \n", BER);
+		PRINTPARM
+		printf("FER is %.3e \n", FER);
 #endif
 
+#ifndef TEST_PERF
 		//Compute decoding time and Throughput
+		PRINTPARM
+		printf("Total Number of bits is %.3f Mb\n", (float)BLOCK_SIZE*(time_count-ITERATE_TIME*SUB_NUM)*STREAM_NUM*STREAM_COUNT/1024/1024);
+		PRINTPARM		
 		printf("Time is %.3f ms\n", totalTime);
+		PRINTPARM
 		printf("Thoughput is %.3f Mbps\n", (float)BLOCK_SIZE*(time_count-ITERATE_TIME*SUB_NUM)*STREAM_NUM*STREAM_COUNT / totalTime / 1000);
+#endif		
 		printf("-------------------------------\n");
 
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 		f1 = fopen("BER&FER.txt", "a+");
-		fprintf(f1, "SNR=%.3f, BER=%.3e, FER=%.3e, BLOCK_NUM=%d, BLOCK_ERR=%d\n", DB, BER, FER, block_num, block_error);
+		fprintf(f1, "SNR=%.3f, BER=%.3e, FER=%.3e, BLOCK_NUM=%ld, BLOCK_ERR=%ld\n", DB, BER, FER, block_num, block_error);
 		fclose(f1);
 		f1 = NULL;
 #endif
@@ -430,29 +457,28 @@ int main()
 		//Free Host Memory
 		for (int i = 0; i < (ITERATE_TIME * SUB_NUM); i++)
 		{
-			cudaFreeHost(h_decoded_word[i]);
+			checkCudaErrors(cudaFreeHost(h_decoded_word[i]));
 		}
-		cudaFreeHost(h_channel_info);
-		cudaFreeHost(h_info_col_2_row);
-		cudaFreeHost(h_info_row_2_col);
+		checkCudaErrors(cudaFreeHost(h_channel_info));
+		checkCudaErrors(cudaFreeHost(h_info_col_2_row));
+		checkCudaErrors(cudaFreeHost(h_info_row_2_col));
 
 		//Free Device Memory and Temp Memory
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
-			cudaFree(d_channel_info[i]);
-			cudaFree(d_decoded_word[i]);
-			cudaFree(d_info_col_2_row[i]);
-			cudaFree(d_info_row_2_col[i]);
+			checkCudaErrors(cudaFree(d_channel_info[i]));
+			checkCudaErrors(cudaFree(d_decoded_word[i]));
+			checkCudaErrors(cudaFree(d_info_col_2_row[i]));
+			checkCudaErrors(cudaFree(d_info_row_2_col[i]));
 
-			cudaFreeHost(th_info_col_2_row[i]);
-#ifndef MAP_MODE
-			cudaFreeHost(th_decoded_word[i]);
+			checkCudaErrors(cudaFreeHost(th_info_col_2_row[i]));
+#ifndef LINUX
+			checkCudaErrors(cudaFreeHost(th_decoded_word[i]));
 #endif
 		}
 
 		//Free Buffers
-#ifdef BUFFER_MODE
-#ifdef MAP_MODE
+#ifdef LINUX
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
 			for (int j = 0; j < SUB_NUM; j++)
@@ -464,36 +490,35 @@ int main()
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
 			for (int j = 0; j < SUB_NUM; j++)
-				cudaFreeHost(buf_h_info_col_2_row[i * SUB_NUM + j]);
-			cudaFreeHost(buf_h_channel_info[i]);
+				checkCudaErrors(cudaFreeHost(buf_h_info_col_2_row[i * SUB_NUM + j]));
+			checkCudaErrors(cudaFreeHost(buf_h_channel_info[i]));
 		}
 #endif
 		for (int i = 0; i < STREAM_NUM; i++)
 		{
 			for (int j = 0; j < SUB_NUM; j++)
-				cudaFree(buf_d_info_col_2_row[i * SUB_NUM + j]);
-			cudaFree(buf_d_channel_info[i]);
+				checkCudaErrors(cudaFree(buf_d_info_col_2_row[i * SUB_NUM + j]));
+			checkCudaErrors(cudaFree(buf_d_channel_info[i]));
 		}
-#endif
 
 		//Cuda Stream Destroy
 		for (int i = 0; i < STREAM_NUM; i++)
-			cudaStreamDestroy(str[i]);
+			checkCudaErrors(cudaStreamDestroy(str[i]));
 
 		//Cuda Event Destroy
-		cudaEventDestroy(start);
-		cudaEventDestroy(stop);
+		checkCudaErrors(cudaEventDestroy(start));
+		checkCudaErrors(cudaEventDestroy(stop));
 
-#ifdef TESTDB_MODE
+#ifdef TEST_PERF
 	}
 #endif
 
 		//GPU Device Reset
-		cudaDeviceReset();
+		checkCudaErrors(cudaDeviceReset());
 
 		//Exit
 		printf("Test passed\n");
 		exit(EXIT_SUCCESS);
 
-		return 0;
+		//return 0;
 }

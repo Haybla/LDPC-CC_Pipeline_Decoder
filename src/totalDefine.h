@@ -1,3 +1,18 @@
+/*
+Copyright (c) 2014-2015 Mokky and Haybla. All rights reserved.
+
+This file is part of LDPC-CC_Pipeline_Decoder. Original Codes can 
+be found at <https://github.com/Haybla>.
+
+LDPC-CC_Pipeline_Decoder is free software: you can redistribute it 
+and/or modify it under the terms of the GNU General Public License 
+as published by the Free Software Foundation, either version 3 of 
+the License, or any later version.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include "stdio.h"
@@ -10,30 +25,22 @@
 #include "device_launch_parameters.h"
 #include "device_functions.h"
 #include "cuda_device_runtime_api.h"
-#include <curand.h>
-#include <curand_kernel.h>
 
 #define MINLOG 1e-6 
 #define MAXLOG 512
 
-//#define CODE1
-#define CODE2
+#define CODE1
+//#define CODE2
 
-#define BUFFER_MODE
-//#define CH_MODE
-//#define MAP_MODE
+#define LINUX
 
-#define COMPUTE_2x
-//#define COMPUTE_3x
+//#define TEST_PERF
 
-#define UNROLL
 
-//#define TESTDB_MODE
-//#define TESTSTREAM_MODE
 
 #define ThreadpBlock 256
 #define ITERATE_TIME 16	//Iteration times
-#define STREAM_NUM 2	//Cuda_Streams
+#define STREAM_NUM 3	//Cuda_Streams
 
 #ifdef CODE1
 #define ROW_OFFSET 3
@@ -64,6 +71,8 @@
 #define MAX_DEG_COL 6
 #define MAX_DEG_ROW 10
 #endif
+
+typedef long int __int64;
 
 typedef struct
 {
@@ -110,14 +119,12 @@ typedef struct
 	info_row info[MAX_DEG_ROW];
 }INFO_ROW; 
 
-#ifdef BUFFER_MODE
 typedef float buf_info_col[BLOCK_SIZE];
 typedef struct
 {
 	buf_info_col info[MAX_DEG_COL];
 }BUF_INFO_COL;
 typedef float buf_info_ch[BLOCK_SIZE];
-#endif
 
 typedef float info_ch[COL_LENGTH];
 
