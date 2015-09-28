@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2014-2015 Mokky and Haybla. All rights reserved.
+Copyright (c) 2014-2015 Mokyy and Haybla. All rights reserved.
 
 This file is part of LDPC-CC_Pipeline_Decoder. Original Codes can
 be found at <https://github.com/Haybla>.
