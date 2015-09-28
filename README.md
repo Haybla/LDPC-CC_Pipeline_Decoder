@@ -4,7 +4,7 @@ Copyright (c) 2014-2015 Mokyy and Haybla. All rights reserved.
 
 This is the source codes of a CUDA application named LDPC-CC_Pipeline_Decoder. 
 Techniques of design and optimization can be found in the article "High Throughput 
-Pipeline Decoder for LDPC Convolutional Codes on GPU" published inthe IEEE 
+Pipeline Decoder for LDPC Convolutional Codes on GPU" published in the IEEE 
 Communications Letters journal (The article was accepted just now).
 
 In order to compile this project, Linux OS is recommended. Just open a terminal 
